@@ -1,0 +1,79 @@
+{
+  "name": "snapmetrics",
+  "version": "0.1.0",
+  "description": "A package for calculating the average response time",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toolplayer/snapmetrics.git"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "types": "./dist/index.d.ts",
+    "default": "./dist/index.js"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "test": "ava",
+    "build": "rimraf dist && tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "denque": "^2.1.0",
+    "throttle-debounce": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/sinon": "^17.0.3",
+    "@types/throttle-debounce": "^5.0.2",
+    "ava": "^6.2.0",
+    "rimraf": "^5.0.10",
+    "sinon": "^19.0.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "author": "ToolPlayer <toolplayercom@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/toolplayer/snapmetrics/issues"
+  },
+  "homepage": "https://toolplayer.com",
+  "keywords": [
+    "metrics",
+    "data-processing",
+    "real-time",
+    "in-memory",
+    "averages",
+    "time-windows",
+    "performance-monitoring",
+    "lightweight",
+    "metric-tracking",
+    "response-time",
+    "nodejs",
+    "javascript",
+    "esm",
+    "analytics",
+    "monitoring"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "ava": {
+    "workerThreads": false,
+    "files": [
+      "tests/**"
+    ],
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--import=tsx/esm"
+    ]
+  }
+}
