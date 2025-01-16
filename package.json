@@ -1,7 +1,7 @@
 {
   "name": "snapmetrics",
   "version": "0.1.0",
-  "description": "A package for calculating the average response time",
+  "description": "Lightweight library for tracking real-time metrics with rolling averages over custom time windows.",
   "license": "MIT",
   "repository": {
     "type": "git",
