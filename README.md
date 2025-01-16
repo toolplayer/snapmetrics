@@ -148,6 +148,10 @@ The constructor accepts either an array of time windows or a configuration optio
 
   Add a new value to all time windows.
 
+- `recordDuration(fn: () => T | Promise<T>): T | Promise<T>`
+
+  Measures the execution time of a function and records the duration in all time windows. Returns the result of the executed function.
+
 - `getCounts(): Record<TimeWindow, number>`
 
   Retrieve the count of values for each time window.

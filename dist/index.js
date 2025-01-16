@@ -95,6 +95,23 @@ export default class SnapMetrics {
             console.log("Updated windows:", JSON.stringify(this.windows, null, 2));
     }
     /**
+     * Measures the execution time of a synchronous or asynchronous function and records the duration.
+     *
+     * @template T The return type of the provided function.
+     * @param fn The function to be executed, which can be synchronous or return a Promise for asynchronous execution.
+     * @returns The result of the executed function. If the function returns a Promise, the result will also be a Promise.
+     */
+    recordDuration(fn) {
+        const startTime = performance.now();
+        const finalize = (result) => {
+            const duration = performance.now() - startTime;
+            this.record(duration);
+            return result;
+        };
+        const result = fn();
+        return result instanceof Promise ? result.then(finalize) : finalize(result);
+    }
+    /**
      * Retrieves the current count of values for all time windows.
      * @returns Counts for all time windows.
      */

@@ -35,6 +35,14 @@ export default class SnapMetrics {
      */
     record(value: number): void;
     /**
+     * Measures the execution time of a synchronous or asynchronous function and records the duration.
+     *
+     * @template T The return type of the provided function.
+     * @param fn The function to be executed, which can be synchronous or return a Promise for asynchronous execution.
+     * @returns The result of the executed function. If the function returns a Promise, the result will also be a Promise.
+     */
+    recordDuration<T>(fn: () => T | Promise<T>): T | Promise<T>;
+    /**
      * Retrieves the current count of values for all time windows.
      * @returns Counts for all time windows.
      */
