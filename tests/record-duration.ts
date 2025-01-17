@@ -1,5 +1,4 @@
 import test from "ava";
-import sinon from "sinon";
 import SnapMetrics from "../src/index.js";
 
 test("records duration (sync)", async (t) => {

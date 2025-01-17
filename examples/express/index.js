@@ -1,4 +1,3 @@
-import { performance } from "perf_hooks";
 import express from "express";
 import SnapMetrics from "../../dist/index.js";
 

@@ -1,4 +1,3 @@
-import { performance } from "perf_hooks";
 import Denque from "denque";
 import { throttle } from "throttle-debounce";
 

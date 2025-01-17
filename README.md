@@ -33,7 +33,6 @@ npm install snapmetrics
 Track request durations in an Express application and expose rolling averages:
 
 ```js
-import { performance } from "perf_hooks";
 import express from "express";
 import SnapMetrics from "snapmetrics";
 
