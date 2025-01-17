@@ -102,13 +102,17 @@ export default class SnapMetrics {
      */
     recordDuration(fn) {
         const startTime = performance.now();
-        const finalize = (result) => {
-            const duration = performance.now() - startTime;
-            this.record(duration);
-            return result;
-        };
         const result = fn();
-        return result instanceof Promise ? result.then(finalize) : finalize(result);
+        if (result instanceof Promise) {
+            return result.then((value) => {
+                this.record(performance.now() - startTime);
+                return value;
+            });
+        }
+        else {
+            this.record(performance.now() - startTime);
+            return result;
+        }
     }
     /**
      * Retrieves the current count of values for all time windows.
