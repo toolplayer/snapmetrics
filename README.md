@@ -145,7 +145,7 @@ The constructor accepts either an array of time windows or a configuration optio
 
 - `record(value: number): void`
 
-  Add a new value to all time windows.
+  Records a value into all active time windows.
 
 - `recordDuration(fn: () => T | Promise<T>): T | Promise<T>`
 
@@ -153,15 +153,15 @@ The constructor accepts either an array of time windows or a configuration optio
 
 - `getCounts(): Record<TimeWindow, number>`
 
-  Retrieve the count of values for each time window.
+  Retrieves the count of values for all time windows.
 
 - `getSums(): Record<TimeWindow, number>`
 
-  Retrieve the sum of values for each time window.
+  Retrieves the sum of values for all time windows.
 
 - `getAverages(): Record<TimeWindow, number>`
 
-  Retrieve rolling averages for each time window.
+  Retrieves the rolling averages for all time windows.
 
 ## Contribution
 

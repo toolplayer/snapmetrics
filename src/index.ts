@@ -86,8 +86,9 @@ export default class SnapMetrics {
       );
     }
   }
+
   /**
-   * Removes expired records from the time windows.
+   * Removes expired records from all time windows.
    */
   private removeExpiredRecords() {
     const now = performance.now();
@@ -138,7 +139,7 @@ export default class SnapMetrics {
   }
 
   /**
-   * Measures the execution time of a synchronous or asynchronous function and records the duration.
+   * Measures the execution time of a synchronous or asynchronous function and records the duration in all time windows.
    *
    * @template T The return type of the provided function.
    * @param fn The function to be executed, which can be synchronous or return a Promise for asynchronous execution.
@@ -161,7 +162,7 @@ export default class SnapMetrics {
   }
 
   /**
-   * Retrieves the current count of values for all time windows.
+   * Retrieves the count of values for all time windows.
    * @returns Counts for all time windows.
    */
   getCounts(): Record<TimeWindow, number> {
@@ -176,7 +177,7 @@ export default class SnapMetrics {
   }
 
   /**
-   * Retrieves the current sum of values for all time windows.
+   * Retrieves the sum of values for all time windows.
    * @returns Sums for all time windows.
    */
   getSums(): Record<TimeWindow, number> {
@@ -191,7 +192,7 @@ export default class SnapMetrics {
   }
 
   /**
-   * Retrieves the current rolling averages for all time windows.
+   * Retrieves the rolling averages for all time windows.
    * @returns Averages for all time windows.
    */
   getAverages(): Record<TimeWindow, number> {
