@@ -152,11 +152,11 @@ The constructor accepts either an array of time windows or a configuration optio
 
 - `record(value: number): void`
 
-  Records a value into all active time windows.
+  Records a value into all active time windows. The value is stored with a timestamp and used for calculating various metrics.
 
-- `recordDuration(fn: () => T | Promise<T>): T | Promise<T>`
+- `recordDuration<T>(fn: () => T | Promise<T>): T | Promise<T>`
 
-  Measures the execution time of a function and records the duration in all time windows. Returns the result of the executed function.
+  Measures the execution time of a synchronous or asynchronous function and records the duration in all time windows. Returns the result of the executed function. For async functions, returns a Promise that resolves to the function result.
 
 - `getCounts(): Record<TimeWindow, number>`
 
