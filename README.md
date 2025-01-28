@@ -8,10 +8,10 @@
 
 SnapMetrics is a lightweight, in-memory metrics tracking library that calculates rolling statistics over configurable time windows. It provides:
 
-- **Rolling Statistics**: Calculate averages, medians, minimums, maximums, standard deviations and percentiles over user-defined time windows (e.g. "15s", "1m", "2h")
-- **Flexible Time Windows**: Configure multiple concurrent time windows to track metrics over different durations
-- **Performance Measurement**: Built-in utilities to measure and record function execution times, with support for both synchronous and asynchronous functions
-- **Efficient Processing**: Uses a circular buffer implementation for memory efficiency, with configurable throttling of expired record cleanup
+- **Rolling Statistics**: Calculate comprehensive statistics including averages, medians, percentiles, minimums, maximums, and standard deviations over user-defined time windows
+- **Flexible Time Windows**: Configure multiple concurrent time windows (e.g., "15s", "1m", "2h") to track metrics over different durations
+- **Performance Measurement**: Built-in utilities to measure and record function execution times, with native support for both synchronous and asynchronous functions
+- **Efficient Processing**: Uses a circular buffer implementation with smart caching and configurable throttling for optimal memory usage and performance
 
 The library is designed to be lightweight and easy to integrate into any JavaScript/TypeScript application needing real-time performance monitoring and statistical analysis.
 
@@ -21,9 +21,17 @@ This package is **native ESM** and does not provide CommonJS support. Ensure you
 
 ## Features
 
-- Flexible support for custom time windows (e.g., `15s`, `1m`, `2h`).
-- Real-time calculations of sums, counts, and averages.
-- Lightweight and efficient, with minimal dependencies.
+- **Rolling Statistics**: Calculate comprehensive metrics over configurable time windows:
+  - Averages (mean)
+  - Medians
+  - Percentiles (configurable, defaults to 90th and 95th)
+  - Minimums and maximums
+  - Standard deviations
+  - Counts and sums
+- **Flexible Time Windows**: Support for multiple concurrent time windows using `<number><unit>` format (e.g., "15s", "1m", "2h")
+- **Performance Measurement**: Built-in utilities to measure function execution times:
+  - Support for both synchronous and asynchronous functions
+  - Automatic duration recording
 
 ## Installation
 
