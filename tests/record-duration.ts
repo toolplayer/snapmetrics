@@ -9,7 +9,8 @@ test("records duration (sync)", async (t) => {
   });
 
   t.is(result, "sync result");
-  t.true(sm.getAverages()["1m"] > 0);
+  const average = sm.getAverages()["1m"];
+  t.true(average !== null && average > 0);
 });
 
 test("records duration (async)", async (t) => {
@@ -22,5 +23,6 @@ test("records duration (async)", async (t) => {
 
   t.true(resultPromise instanceof Promise);
   t.is(result, "async result");
-  t.true(sm.getAverages()["1m"] >= 200);
+  const average = sm.getAverages()["1m"];
+  t.true(average !== null && average >= 200);
 });

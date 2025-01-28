@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/metrics", (req, res) => {
-  res.json(sm.getAverages());
+  res.json(sm.getMetrics());
 });
 
 app.listen(3000, () => {

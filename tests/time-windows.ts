@@ -19,14 +19,14 @@ test("initialises with correct time windows", (t) => {
     "1h": 0,
   });
   t.deepEqual(sm.getSums(), {
-    "10m": 0,
-    "30m": 0,
-    "1h": 0,
+    "10m": null,
+    "30m": null,
+    "1h": null,
   });
   t.deepEqual(sm.getAverages(), {
-    "10m": 0,
-    "30m": 0,
-    "1h": 0,
+    "10m": null,
+    "30m": null,
+    "1h": null,
   });
 });
 
@@ -88,7 +88,7 @@ test("handles multiple time windows independently", (t) => {
   });
 });
 
-test("returns 0 for empty windows", (t) => {
+test("returns null for empty windows", (t) => {
   const sm = new SnapMetrics(["1m", "5m"]);
 
   t.deepEqual(sm.getCounts(), {
@@ -96,12 +96,12 @@ test("returns 0 for empty windows", (t) => {
     "5m": 0,
   });
   t.deepEqual(sm.getSums(), {
-    "1m": 0,
-    "5m": 0,
+    "1m": null,
+    "5m": null,
   });
   t.deepEqual(sm.getAverages(), {
-    "1m": 0,
-    "5m": 0,
+    "1m": null,
+    "5m": null,
   });
 
   sm.record(100);
@@ -112,11 +112,11 @@ test("returns 0 for empty windows", (t) => {
     "5m": 1,
   });
   t.deepEqual(sm.getSums(), {
-    "1m": 0, // All logs are expired
+    "1m": null, // All logs are expired
     "5m": 100,
   });
   t.deepEqual(sm.getAverages(), {
-    "1m": 0, // All logs are expired
+    "1m": null, // All logs are expired
     "5m": 100,
   });
 });
@@ -166,12 +166,12 @@ test("handles no logs gracefully", (t) => {
     "5m": 0,
   });
   t.deepEqual(sm.getSums(), {
-    "1m": 0,
-    "5m": 0,
+    "1m": null,
+    "5m": null,
   });
   t.deepEqual(sm.getAverages(), {
-    "1m": 0,
-    "5m": 0,
+    "1m": null,
+    "5m": null,
   });
 });
 

@@ -6,7 +6,14 @@
 
 ## Overview
 
-SnapMetrics is a lightweight, in-memory data processing library for tracking and analysing real-time metrics. It currently supports calculating rolling averages over user-defined time windows, making it suitable for scenarios like tracking page load time, server response time, or session duration.
+SnapMetrics is a lightweight, in-memory metrics tracking library that calculates rolling statistics over configurable time windows. It provides:
+
+- **Rolling Statistics**: Calculate averages, medians, minimums, maximums, standard deviations and percentiles over user-defined time windows (e.g. "15s", "1m", "2h")
+- **Flexible Time Windows**: Configure multiple concurrent time windows to track metrics over different durations
+- **Performance Measurement**: Built-in utilities to measure and record function execution times, with support for both synchronous and asynchronous functions
+- **Efficient Processing**: Uses a circular buffer implementation for memory efficiency, with configurable throttling of expired record cleanup
+
+The library is designed to be lightweight and easy to integrate into any JavaScript/TypeScript application needing real-time performance monitoring and statistical analysis.
 
 ## Important Note
 
@@ -153,15 +160,39 @@ The constructor accepts either an array of time windows or a configuration optio
 
 - `getCounts(): Record<TimeWindow, number>`
 
-  Retrieves the count of values for all time windows.
+  Returns the count of values for all time windows. Returns a record mapping each time window to its count of recorded values.
 
-- `getSums(): Record<TimeWindow, number>`
+- `getSums(): Record<TimeWindow, number | null>`
 
-  Retrieves the sum of values for all time windows.
+  Returns the sum of values for all time windows. Returns a record mapping each time window to the sum of its recorded values. Returns null for empty windows.
 
-- `getAverages(): Record<TimeWindow, number>`
+- `getAverages(): Record<TimeWindow, number | null>`
 
-  Retrieves the rolling averages for all time windows.
+  Returns the rolling averages for all time windows. Returns a record mapping each time window to the average (mean) of its recorded values. Returns null for empty windows.
+
+- `getMedians(): Record<TimeWindow, number | null>`
+
+  Returns the middle value for each time window using linear interpolation. For an even number of values, uses linear interpolation between the two middle values. Returns null for empty windows.
+
+- `getPercentiles(percentile: number): Record<TimeWindow, number | null>`
+
+  Returns the value below which the given percentage of observations fall, using Hyndman and Fan type 7 linear interpolation method. Takes a percentile value between 0 and 100. Returns null for empty windows.
+
+- `getMinimums(): Record<TimeWindow, number | null>`
+
+  Returns the smallest value recorded within each time window. Returns null for empty windows.
+
+- `getMaximums(): Record<TimeWindow, number | null>`
+
+  Returns the largest value recorded within each time window. Returns null for empty windows.
+
+- `getStandardDeviations(): Record<TimeWindow, number | null>`
+
+  Returns the standard deviation (square root of variance) for each time window, indicating how spread out values are from their mean. Returns null for empty windows.
+
+- `getMetrics(percentiles: number[] = [90, 95]): Record<TimeWindow, Record<string, number | null>>`
+
+  Returns all metrics for each time window. Returns a record mapping each time window to a record containing all metrics.
 
 ## Contribution
 
