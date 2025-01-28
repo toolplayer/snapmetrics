@@ -1,5 +1,5 @@
 import test from "ava";
-import SnapMetrics from "../src/index.ts";
+import { SnapMetrics } from "../src/index.ts";
 
 test("calculates median correctly", (t) => {
   const sm = new SnapMetrics(["1m"]);

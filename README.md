@@ -41,7 +41,7 @@ Track request durations in an Express application and expose rolling averages:
 
 ```js
 import express from "express";
-import SnapMetrics from "snapmetrics";
+import { SnapMetrics } from "snapmetrics";
 
 const app = express();
 const sm = new SnapMetrics();
@@ -83,7 +83,7 @@ Monitor rolling averages using PM2 metrics:
 
 ```js
 import io from "@pm2/io";
-import SnapMetrics from "snapmetrics";
+import { SnapMetrics } from "snapmetrics";
 
 function setupPm2Metrics() {
   const sm = new SnapMetrics();

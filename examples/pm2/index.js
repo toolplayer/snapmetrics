@@ -1,5 +1,5 @@
 import io from "@pm2/io";
-import SnapMetrics from "../../dist/index.js";
+import { SnapMetrics } from "../../dist/index.js";
 
 function setupPm2Metrics() {
   const sm = new SnapMetrics();

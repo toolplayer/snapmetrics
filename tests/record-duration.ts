@@ -1,5 +1,5 @@
 import test from "ava";
-import SnapMetrics from "../src/index.js";
+import { SnapMetrics } from "../src/index.js";
 
 test("records duration (sync)", async (t) => {
   const sm = new SnapMetrics();

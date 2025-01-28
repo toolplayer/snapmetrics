@@ -1,5 +1,5 @@
 import express from "express";
-import SnapMetrics from "../../dist/index.js";
+import { SnapMetrics } from "../../dist/index.js";
 
 const app = express();
 const sm = new SnapMetrics();

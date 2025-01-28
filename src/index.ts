@@ -24,7 +24,7 @@ interface SnapMetricsOptions {
   debug?: boolean; // Enable or disable debug logging.
 }
 
-export default class SnapMetrics {
+export class SnapMetrics {
   private windows: Record<TimeWindow, WindowData>;
   private timeWindowDurations: Record<TimeWindow, number>;
   private debug: boolean;
