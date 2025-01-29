@@ -343,7 +343,9 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const minimums = this.mapWindows((window) =>
-      calculateMinimum(this.getWindowValues(window))
+      window.sortedValues?.length
+        ? window.sortedValues[0]!
+        : calculateMinimum(this.getWindowValues(window))
     );
 
     if (this.debug)
@@ -365,7 +367,9 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const maximums = this.mapWindows((window) =>
-      calculateMaximum(this.getWindowValues(window))
+      window.sortedValues?.length
+        ? window.sortedValues[window.sortedValues.length - 1]!
+        : calculateMaximum(this.getWindowValues(window))
     );
 
     if (this.debug)
