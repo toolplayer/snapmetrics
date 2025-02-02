@@ -15,13 +15,25 @@ interface WindowData {
   sum: number; // Sum of values within the window
   count: number; // Number of records values
   queue: Denque<{ timestamp: number; value: number }>; // Timestamped values
-  sortedValues: number[] | null; // Cache for sorted values
+  sortedValues?: number[]; // Optional cache of sorted values
 }
 
 interface SnapMetricsOptions {
   timeWindows?: TimeWindow[]; // Optional, defaults to ["1m", "5m", "15m"].
   removeExpiredRecordsThrottlingMS?: number | false; // Throttle interval in milliseconds or disable throttling.
   debug?: boolean; // Enable or disable debug logging.
+}
+
+interface ValueResult {
+  values: number[];
+  isSorted: boolean;
+}
+
+enum SortRequirement {
+  SORTED = "sorted", // Must be sorted (median, percentiles)
+  PREFER_SORTED = "prefer_sorted", // Prefer sorted if available (min, max)
+  UNSORTED = "unsorted", // Must not be sorted (when raw values needed)
+  ANY = "any", // Don't care about sorting (avg, std dev)
 }
 
 export class SnapMetrics {
@@ -71,10 +83,7 @@ export class SnapMetrics {
     ) as Record<TimeWindow, number>;
 
     this.windows = Object.fromEntries(
-      timeWindows.map((key) => [
-        key,
-        { sum: 0, count: 0, queue: new Denque(), sortedValues: null },
-      ])
+      timeWindows.map((key) => [key, { sum: 0, count: 0, queue: new Denque() }])
     ) as Record<TimeWindow, WindowData>;
 
     if (removeExpiredRecordsThrottlingMS !== false) {
@@ -106,7 +115,7 @@ export class SnapMetrics {
       }
 
       if (expired) {
-        window.sortedValues = null; // Invalidate cached sorted values if any records expired
+        delete window.sortedValues; // Invalidate cached sorted values if any records expired
       }
     }
   }
@@ -117,20 +126,62 @@ export class SnapMetrics {
    * @returns Record mapping each time window to its transformed value
    */
   private mapWindows<T>(
-    mapper: (window: WindowData) => T
+    mapper: (window: WindowData, key: TimeWindow) => T
   ): Record<TimeWindow, T> {
     return Object.fromEntries(
-      Object.entries(this.windows).map(([key, window]) => [key, mapper(window)])
+      Object.entries(this.windows).map(([key, window]) => [
+        key,
+        mapper(window, key as TimeWindow),
+      ])
     );
   }
 
   /**
-   * Gets an array of raw numeric values from a window's queue.
-   * @param window WindowData object containing the queue
-   * @returns Array of numeric values without timestamps
+   * Gets values from a window, optionally sorted, with efficient caching.
+   * @param windowKey - The time window key
+   * @param sortRequirement - Optional sorting requirement, defaults to ANY
+   * @returns Object containing values array and isSorted flag, or null if window doesn't exist
    */
-  private getWindowValues = (window: WindowData): number[] =>
-    window.queue.toArray().map((v) => v.value);
+  private getValues(
+    windowKey: TimeWindow,
+    sortRequirement: SortRequirement = SortRequirement.ANY
+  ): ValueResult | null {
+    const window = this.windows[windowKey];
+    if (!window) {
+      return null;
+    }
+    if (window.count === 0) {
+      return { values: [], isSorted: true };
+    }
+
+    if (
+      window.sortedValues &&
+      window.sortedValues.length === window.queue.length
+    ) {
+      // Return cached sorted values unless UNSORTED is specifically required
+      if (sortRequirement !== SortRequirement.UNSORTED) {
+        return { values: window.sortedValues, isSorted: true };
+      }
+    }
+
+    const values = window.queue.toArray().map((v) => v.value);
+
+    switch (sortRequirement) {
+      case SortRequirement.SORTED:
+        const sortedValues = values.sort((a, b) => a - b);
+        window.sortedValues = sortedValues;
+        return { values: sortedValues, isSorted: true };
+
+      case SortRequirement.PREFER_SORTED:
+        return { values, isSorted: false };
+
+      case SortRequirement.UNSORTED:
+        return { values, isSorted: false };
+
+      case SortRequirement.ANY:
+        return { values, isSorted: false };
+    }
+  }
 
   /**
    * Records a value into all active time windows.
@@ -147,7 +198,6 @@ export class SnapMetrics {
       window.queue.push({ timestamp, value });
       window.sum += value;
       window.count++;
-      window.sortedValues = null; // Invalidate cached sorted values
     }
 
     this.throttledRemoveExpiredRecords();
@@ -248,27 +298,15 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating averages...");
     this.throttledRemoveExpiredRecords();
 
-    const averages = this.mapWindows((window) =>
-      calculateAverage(this.getWindowValues(window), window.sum)
-    );
+    const averages = this.mapWindows((window, key) => {
+      if (window.count === 0) return null;
+      const { values } = this.getValues(key as TimeWindow)!;
+      return calculateAverage(values, window.sum);
+    });
 
     if (this.debug)
       console.log("Averages calculated:", JSON.stringify(averages, null, 2));
     return averages;
-  }
-
-  /**
-   * Returns sorted values for a window, using cached values if available.
-   * @returns Sorted values for the window.
-   */
-  private getSortedValues(window: WindowData): number[] {
-    if (!window.sortedValues) {
-      window.sortedValues = window.queue
-        .toArray()
-        .map((v) => v.value)
-        .sort((a, b) => a - b);
-    }
-    return window.sortedValues;
   }
 
   /**
@@ -286,10 +324,13 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating medians...");
     this.throttledRemoveExpiredRecords();
 
-    const medians = this.mapWindows((window) => {
+    const medians = this.mapWindows((window, key) => {
       if (window.count === 0) return null;
-      const sortedValues = this.getSortedValues(window);
-      return calculatePercentile(sortedValues, 50);
+      const { values } = this.getValues(
+        key as TimeWindow,
+        SortRequirement.SORTED
+      )!;
+      return calculatePercentile(values, 50);
     });
 
     if (this.debug)
@@ -315,10 +356,13 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating percentiles...");
     this.throttledRemoveExpiredRecords();
 
-    const percentiles = this.mapWindows((window) => {
+    const percentiles = this.mapWindows((window, key) => {
       if (window.count === 0) return null;
-      const sortedValues = this.getSortedValues(window);
-      return calculatePercentile(sortedValues, percentile);
+      const { values } = this.getValues(
+        key as TimeWindow,
+        SortRequirement.SORTED
+      )!;
+      return calculatePercentile(values, percentile);
     });
 
     if (this.debug)
@@ -342,11 +386,14 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating minimums...");
     this.throttledRemoveExpiredRecords();
 
-    const minimums = this.mapWindows((window) =>
-      window.sortedValues?.length
-        ? window.sortedValues[0]!
-        : calculateMinimum(this.getWindowValues(window))
-    );
+    const minimums = this.mapWindows((window, key) => {
+      if (window.count === 0) return null;
+      const { values, isSorted } = this.getValues(
+        key as TimeWindow,
+        SortRequirement.PREFER_SORTED
+      )!;
+      return isSorted ? values[0]! : calculateMinimum(values);
+    });
 
     if (this.debug)
       console.log("Minimums calculated:", JSON.stringify(minimums, null, 2));
@@ -366,11 +413,14 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating maximums...");
     this.throttledRemoveExpiredRecords();
 
-    const maximums = this.mapWindows((window) =>
-      window.sortedValues?.length
-        ? window.sortedValues[window.sortedValues.length - 1]!
-        : calculateMaximum(this.getWindowValues(window))
-    );
+    const maximums = this.mapWindows((window, key) => {
+      if (window.count === 0) return null;
+      const { values, isSorted } = this.getValues(
+        key as TimeWindow,
+        SortRequirement.PREFER_SORTED
+      )!;
+      return isSorted ? values[values.length - 1]! : calculateMaximum(values);
+    });
 
     if (this.debug)
       console.log("Maximums calculated:", JSON.stringify(maximums, null, 2));
@@ -392,9 +442,9 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating standard deviations...");
     this.throttledRemoveExpiredRecords();
 
-    const stdDevs = this.mapWindows((window) => {
+    const stdDevs = this.mapWindows((window, key) => {
       if (window.count === 0) return null;
-      const values = this.getWindowValues(window);
+      const { values } = this.getValues(key as TimeWindow)!;
       const mean = window.sum / window.count;
       return calculateStandardDeviation(values, mean);
     });
