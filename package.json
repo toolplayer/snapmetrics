@@ -1,7 +1,7 @@
 {
   "name": "snapmetrics",
   "version": "0.3.2",
-  "description": "Lightweight library for tracking real-time metrics with rolling averages over custom time windows.",
+  "description": "Lightweight library for tracking real-time metrics and events with rolling statistics over configurable time windows.",
   "license": "MIT",
   "repository": {
     "type": "git",
