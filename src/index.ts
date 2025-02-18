@@ -11,11 +11,21 @@ import { parseTimeWindow, swapLevels } from "./utils.js";
 
 export type TimeWindow = `${number}${"s" | "m" | "h"}`; // e.g., "15s", "1m", "2h"
 
+interface ValueMetrics {
+  sum: number;
+  count: number;
+  queue: Denque<{ timestamp: number; value: number }>;
+  sortedValues?: number[]; // Cache of sorted values
+}
+
+interface EventMetrics {
+  counts: Map<string, number>; // Maps event names to their counts
+  timestamps: Denque<{ timestamp: number; event: string }>; // Tracks when events occurred
+}
+
 interface WindowData {
-  sum: number; // Sum of values within the window
-  count: number; // Number of records values
-  queue: Denque<{ timestamp: number; value: number }>; // Timestamped values
-  sortedValues?: number[]; // Optional cache of sorted values
+  values: ValueMetrics;
+  events: EventMetrics;
 }
 
 interface SnapMetricsOptions {
@@ -83,7 +93,20 @@ export class SnapMetrics {
     ) as Record<TimeWindow, number>;
 
     this.windows = Object.fromEntries(
-      timeWindows.map((key) => [key, { sum: 0, count: 0, queue: new Denque() }])
+      timeWindows.map((key) => [
+        key,
+        {
+          values: {
+            sum: 0,
+            count: 0,
+            queue: new Denque(),
+          },
+          events: {
+            counts: new Map(),
+            timestamps: new Denque(),
+          },
+        },
+      ])
     ) as Record<TimeWindow, WindowData>;
 
     if (removeExpiredRecordsThrottlingMS !== false) {
@@ -104,18 +127,33 @@ export class SnapMetrics {
       const expiryTime = this.timeWindowDurations[key as TimeWindow]!;
       let expired = false;
 
+      // Remove expired numeric values
       while (
-        !window.queue.isEmpty() &&
-        now - window.queue.peekFront()!.timestamp > expiryTime
+        !window.values.queue.isEmpty() &&
+        now - window.values.queue.peekFront()!.timestamp > expiryTime
       ) {
-        const expiredValue = window.queue.shift()!;
-        window.sum -= expiredValue.value;
-        window.count--;
+        const expiredValue = window.values.queue.shift()!;
+        window.values.sum -= expiredValue.value;
+        window.values.count--;
         expired = true;
       }
 
       if (expired) {
-        delete window.sortedValues; // Invalidate cached sorted values if any records expired
+        delete window.values.sortedValues; // Invalidate cached sorted values if any records expired
+      }
+
+      // Remove expired events and update their counts
+      while (
+        !window.events.timestamps.isEmpty() &&
+        now - window.events.timestamps.peekFront()!.timestamp > expiryTime
+      ) {
+        const expiredEvent = window.events.timestamps.shift()!;
+        const currentCount = window.events.counts.get(expiredEvent.event) || 0;
+        if (currentCount <= 1) {
+          window.events.counts.delete(expiredEvent.event);
+        } else {
+          window.events.counts.set(expiredEvent.event, currentCount - 1);
+        }
       }
     }
   }
@@ -150,26 +188,26 @@ export class SnapMetrics {
     if (!window) {
       return null;
     }
-    if (window.count === 0) {
+    if (window.values.count === 0) {
       return { values: [], isSorted: true };
     }
 
     if (
-      window.sortedValues &&
-      window.sortedValues.length === window.queue.length
+      window.values.sortedValues &&
+      window.values.sortedValues.length === window.values.queue.length
     ) {
       // Return cached sorted values unless UNSORTED is specifically required
       if (sortRequirement !== SortRequirement.UNSORTED) {
-        return { values: window.sortedValues, isSorted: true };
+        return { values: window.values.sortedValues, isSorted: true };
       }
     }
 
-    const values = window.queue.toArray().map((v) => v.value);
+    const values = window.values.queue.toArray().map((v) => v.value);
 
     switch (sortRequirement) {
       case SortRequirement.SORTED:
         const sortedValues = values.sort((a, b) => a - b);
-        window.sortedValues = sortedValues;
+        window.values.sortedValues = sortedValues;
         return { values: sortedValues, isSorted: true };
 
       case SortRequirement.PREFER_SORTED:
@@ -195,9 +233,9 @@ export class SnapMetrics {
     const timestamp = performance.now();
 
     for (const window of Object.values(this.windows)) {
-      window.queue.push({ timestamp, value });
-      window.sum += value;
-      window.count++;
+      window.values.queue.push({ timestamp, value });
+      window.values.sum += value;
+      window.values.count++;
     }
 
     this.throttledRemoveExpiredRecords();
@@ -248,7 +286,7 @@ export class SnapMetrics {
     if (this.debug) console.log("Calculating counts...");
     this.throttledRemoveExpiredRecords();
 
-    const counts = this.mapWindows((window) => window.count);
+    const counts = this.mapWindows((window) => window.values.count);
 
     if (this.debug)
       console.log("Counts calculated:", JSON.stringify(counts, null, 2));
@@ -273,7 +311,7 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const sums = this.mapWindows((window) =>
-      window.count === 0 ? null : window.sum
+      window.values.count === 0 ? null : window.values.sum
     );
 
     if (this.debug)
@@ -299,9 +337,9 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const averages = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values } = this.getValues(key as TimeWindow)!;
-      return calculateAverage(values, window.sum);
+      return calculateAverage(values, window.values.sum);
     });
 
     if (this.debug)
@@ -325,7 +363,7 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const medians = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values } = this.getValues(
         key as TimeWindow,
         SortRequirement.SORTED
@@ -357,7 +395,7 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const percentiles = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values } = this.getValues(
         key as TimeWindow,
         SortRequirement.SORTED
@@ -387,7 +425,7 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const minimums = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values, isSorted } = this.getValues(
         key as TimeWindow,
         SortRequirement.PREFER_SORTED
@@ -414,7 +452,7 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const maximums = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values, isSorted } = this.getValues(
         key as TimeWindow,
         SortRequirement.PREFER_SORTED
@@ -443,9 +481,9 @@ export class SnapMetrics {
     this.throttledRemoveExpiredRecords();
 
     const stdDevs = this.mapWindows((window, key) => {
-      if (window.count === 0) return null;
+      if (window.values.count === 0) return null;
       const { values } = this.getValues(key as TimeWindow)!;
-      const mean = window.sum / window.count;
+      const mean = window.values.sum / window.values.count;
       return calculateStandardDeviation(values, mean);
     });
 
@@ -521,5 +559,96 @@ export class SnapMetrics {
         JSON.stringify(transformedMetrics, null, 2)
       );
     return transformedMetrics;
+  }
+
+  /**
+   * Increments a named counter for tracking frequency across time windows.
+   * @param name - The name of the counter to increment
+   * @param value - Optional amount to increment by (defaults to 1)
+   * @example
+   * const metrics = new SnapMetrics();
+   * metrics.increment('api_calls');  // Increment by 1
+   * metrics.increment('bytes_sent', 1024);  // Increment by specific amount
+   */
+  increment(name: string, value: number = 1): void {
+    if (this.debug) console.log(`Incrementing counter ${name} by ${value}`);
+    const timestamp = performance.now();
+
+    for (const window of Object.values(this.windows)) {
+      window.events.timestamps.push({ timestamp, event: name });
+      const currentCount = window.events.counts.get(name) || 0;
+      window.events.counts.set(name, currentCount + value);
+    }
+
+    this.throttledRemoveExpiredRecords();
+
+    if (this.debug) {
+      console.log(
+        "Updated counter values:",
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries(this.windows).map(([key, window]) => [
+              key,
+              Object.fromEntries(window.events.counts),
+            ])
+          ),
+          null,
+          2
+        )
+      );
+    }
+  }
+
+  /**
+   * Returns the current value of all counters for each time window.
+   * @returns Record mapping each time window to a map of counter values.
+   * @example
+   * const metrics = new SnapMetrics();
+   * metrics.increment('api_calls');
+   * metrics.increment('errors');
+   * metrics.getCounters();
+   * // Returns:
+   * // {
+   * //   "1m": { "api_calls": 1, "errors": 1 },
+   * //   "5m": { "api_calls": 1, "errors": 1 },
+   * //   "15m": { "api_calls": 1, "errors": 1 }
+   * // }
+   */
+  getCounters(): Record<TimeWindow, Record<string, number>> {
+    if (this.debug) console.log("Getting counter values...");
+    this.throttledRemoveExpiredRecords();
+
+    const counters = this.mapWindows((window) =>
+      Object.fromEntries(window.events.counts)
+    );
+
+    if (this.debug)
+      console.log("Counter values:", JSON.stringify(counters, null, 2));
+    return counters;
+  }
+
+  /**
+   * Returns the current value of a specific counter for each time window.
+   * @param name The name of the counter to retrieve
+   * @returns Record mapping each time window to the counter's value. Returns null if counter doesn't exist.
+   * @example
+   * const metrics = new SnapMetrics();
+   * metrics.increment('api_calls');
+   * metrics.getCounter('api_calls'); // { "1m": 1, "5m": 1, "15m": 1 }
+   */
+  getCounter(name: string): Record<TimeWindow, number | null> {
+    if (this.debug) console.log(`Getting counter values for ${name}...`);
+    this.throttledRemoveExpiredRecords();
+
+    const counters = this.mapWindows(
+      (window) => window.events.counts.get(name) ?? null
+    );
+
+    if (this.debug)
+      console.log(
+        `Counter values for ${name}:`,
+        JSON.stringify(counters, null, 2)
+      );
+    return counters;
   }
 }
